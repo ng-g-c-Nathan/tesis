@@ -7,6 +7,9 @@
 # --- Stage 1: Build ---
 FROM node:20-alpine AS builder
 
+# git no viene en alpine por defecto
+RUN apk add --no-cache git
+
 WORKDIR /app
 
 RUN npm install -g @angular/cli
