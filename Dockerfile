@@ -15,4 +15,4 @@ RUN git clone https://github.com/ng-g-c-Nathan/AngularInterfaceForOpenVPN Angula
     git clone https://github.com/ng-g-c-Nathan/network-anomaly-scoring Python/network-anomaly-scoring
 
 # Mostrar la estructura al correr el contenedor
-CMD ["sh", "-c", "echo 'Estructura lista:' && find /proyecto -maxdepth 2 -type d | sort"]
+CMD ["sh", "-c", "echo 'Estructura lista:' && find /tesis -maxdepth 2 -type d | sort"]
