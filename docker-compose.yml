@@ -44,7 +44,7 @@ services:
       # Volumen compartido: Spring puede leer los CSVs que genera Python
       - traffic-daily:/app/daily
     environment:
-      - TRAFFIC_DIR=/var/openvpn/daily
+      - TRAFFIC_DIR=/app/daily
       - SPRING_PROFILES_ACTIVE=prod
     sysctls:
       - net.ipv4.ip_forward=1
