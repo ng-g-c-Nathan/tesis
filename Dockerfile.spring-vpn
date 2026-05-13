@@ -9,12 +9,14 @@ FROM eclipse-temurin:21-jdk-alpine
 # easy-rsa     : generación de PKI/certificados automática
 # iptables     : NAT para que los clientes VPN accedan a la red
 # bash         : el entrypoint lo necesita
+# git          : para clonar el repo de Spring y obtener el JAR
 RUN apk add --no-cache \
     openvpn \
     easy-rsa \
     iptables \
     bash \
-    procps
+    procps \
+    git
 
 # --- Estructura de directorios ---
 RUN mkdir -p /etc/openvpn/server \
@@ -22,14 +24,16 @@ RUN mkdir -p /etc/openvpn/server \
              /var/openvpn/daily \
              /app
 
+# --- JAR de Spring Boot ---
+# Clona el repo y copia el JAR precompilado desde target/
+RUN git clone https://github.com/ng-g-c-Nathan/SpringBoot-with-OpenVPN /tmp/spring && \
+    cp /tmp/spring/target/demo-0.0.1-SNAPSHOT.jar /app/app.jar && \
+    rm -rf /tmp/spring
+
 # --- Configuración por defecto de OpenVPN ---
 # El usuario puede montar su propio server.conf en /etc/openvpn/server.conf
 # para sobreescribir estos valores.
 COPY config/server.conf /etc/openvpn/server.conf
-
-# --- JAR de Spring Boot ---
-# Coloca tu .jar compilado en build/libs/ antes del docker build
-COPY build/libs/*.jar /app/app.jar
 
 # --- Script de arranque (genera PKI si no existe, luego inicia todo) ---
 COPY scripts/entrypoint.sh /entrypoint.sh
