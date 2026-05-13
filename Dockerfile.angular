@@ -1,13 +1,12 @@
 # ===================================================================
 # Dockerfile.angular — Frontend Angular (dist pre-compilado)
-# Sirve el build de producción con nginx en el puerto 80.
-# El dist ya viene compilado en el repo en dist/Conqueror/
+# Angular 17+ compila en dist/Conqueror/browser/
 # ===================================================================
 FROM nginx:alpine
 
 RUN apk add --no-cache git && \
     git clone https://github.com/ng-g-c-Nathan/AngularInterfaceForOpenVPN /tmp/angular && \
-    cp -r /tmp/angular/dist/Conqueror /usr/share/nginx/html/Conqueror && \
+    cp -r /tmp/angular/dist/Conqueror/browser /usr/share/nginx/html/conqueror && \
     rm -rf /tmp/angular
 
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
