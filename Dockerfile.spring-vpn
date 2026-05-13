@@ -1,0 +1,43 @@
+# ===================================================================
+# Dockerfile: Spring Boot + OpenVPN Server
+# Base: Eclipse Temurin 21 (Alpine) — liviano y con JDK listo
+# ===================================================================
+FROM eclipse-temurin:21-jdk-alpine
+
+# --- Dependencias del sistema ---
+# openvpn      : servidor VPN
+# easy-rsa     : generación de PKI/certificados automática
+# iptables     : NAT para que los clientes VPN accedan a la red
+# bash         : el entrypoint lo necesita
+RUN apk add --no-cache \
+    openvpn \
+    easy-rsa \
+    iptables \
+    bash \
+    procps
+
+# --- Estructura de directorios ---
+RUN mkdir -p /etc/openvpn/server \
+             /etc/openvpn/clients \
+             /var/openvpn/daily \
+             /app
+
+# --- Configuración por defecto de OpenVPN ---
+# El usuario puede montar su propio server.conf en /etc/openvpn/server.conf
+# para sobreescribir estos valores.
+COPY config/server.conf /etc/openvpn/server.conf
+
+# --- JAR de Spring Boot ---
+# Coloca tu .jar compilado en build/libs/ antes del docker build
+COPY build/libs/*.jar /app/app.jar
+
+# --- Script de arranque (genera PKI si no existe, luego inicia todo) ---
+COPY scripts/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Puerto OpenVPN (UDP) y Spring Boot (TCP)
+EXPOSE 1194/udp 8080/tcp
+
+# Necesita NET_ADMIN para crear el tun0 y manipular rutas
+# Esto se declara en docker-compose con cap_add
+ENTRYPOINT ["/entrypoint.sh"]

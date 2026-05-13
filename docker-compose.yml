@@ -1,0 +1,76 @@
+# ===================================================================
+# docker-compose.yml — Orquestador principal del proyecto Tesis
+# Servicios:
+#   - repos      : clona todos los repositorios (Alpine + git)
+#   - spring-vpn : servidor OpenVPN + API Spring Boot
+# ===================================================================
+
+services:
+
+  # -----------------------------------------------------------------
+  # repos: Contenedor efímero que clona los repositorios
+  # Solo corre una vez y termina (no es un servicio persistente)
+  # -----------------------------------------------------------------
+  repos:
+    build:
+      context: .                        # Usa el Dockerfile og
+      dockerfile: Dockerfile.repos      # El que ya tienes con los git clone
+    volumes:
+      - tesis-repos:/tesis              # Los repos quedan persistidos en este volumen
+    restart: "no"                       # No reiniciar
+
+  # -----------------------------------------------------------------
+  # spring-vpn: Servidor OpenVPN + Spring Boot API
+  # -----------------------------------------------------------------
+  spring-vpn:
+    build:
+      context: .
+      dockerfile: Dockerfile.spring-vpn
+    container_name: spring-vpn
+    restart: unless-stopped
+
+    # Permisos necesarios para OpenVPN (crear tun0, iptables, etc.)
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun                    # Dispositivo TUN para la interfaz VPN
+
+    ports:
+      - "1194:1194/udp"                 # Puerto VPN (clientes se conectan aquí)
+      - "8080:8080"                     # API Spring Boot (dashboard, comandos)
+
+    volumes:
+      # PKI persistida: los certificados sobreviven a reinicios del contenedor
+      - openvpn-pki:/etc/openvpn/pki
+      # Logs de tráfico VPN (lo lee tu Python de anomaly scoring)
+      - openvpn-logs:/var/openvpn/daily
+      # Descomenta la línea siguiente para sobreescribir el conf por defecto:
+      # - ./config/server.conf:/etc/openvpn/server.conf:ro
+
+    environment:
+      # Variables que tu application.properties ya espera
+      - TRAFFIC_DIR=/var/openvpn/daily
+      - SPRING_PROFILES_ACTIVE=prod
+
+    sysctls:
+      # IP forwarding dentro del contenedor
+      - net.ipv4.ip_forward=1
+
+    healthcheck:
+      test: ["CMD", "sh", "-c", "cat /etc/openvpn/openvpn.pid | xargs -I{} test -d /proc/{}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# -----------------------------------------------------------------
+# Volúmenes persistentes
+# -----------------------------------------------------------------
+volumes:
+  tesis-repos:
+    driver: local
+  openvpn-pki:
+    driver: local                       # Certificados NO borrar
+  openvpn-logs:
+    driver: local
