@@ -1,29 +1,14 @@
 # ===================================================================
-# Dockerfile.angular — Frontend Angular (multi-stage build)
-# Stage 1: compila con Node + Angular CLI
-# Stage 2: sirve el dist con nginx
+# Dockerfile.angular — Frontend Angular (dist pre-compilado)
+# Sirve el build de producción con nginx en el puerto 80.
+# El dist ya viene compilado en el repo en dist/Conqueror/
 # ===================================================================
-
-# --- Stage 1: Build ---
-FROM node:20-alpine AS builder
-
-# git no viene en alpine por defecto
-RUN apk add --no-cache git
-
-WORKDIR /app
-
-RUN npm install -g @angular/cli
-
-RUN git clone https://github.com/ng-g-c-Nathan/AngularInterfaceForOpenVPN /app
-
-RUN npm install
-
-RUN ng build --configuration production
-
-# --- Stage 2: Serve ---
 FROM nginx:alpine
 
-COPY --from=builder /app/dist/Conqueror /usr/share/nginx/html/Conqueror
+RUN apk add --no-cache git && \
+    git clone https://github.com/ng-g-c-Nathan/AngularInterfaceForOpenVPN /tmp/angular && \
+    cp -r /tmp/angular/dist/Conqueror /usr/share/nginx/html/Conqueror && \
+    rm -rf /tmp/angular
 
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
 
