@@ -17,9 +17,12 @@ EASYRSA="/usr/share/easy-rsa/easyrsa"
 if [ ! -f "$PKI_DIR/ca.crt" ]; then
     echo ">>> PKI no encontrada — generando certificados automáticamente..."
 
-    # Inicializar directorio Easy-RSA apuntando a /etc/openvpn/pki
+    # Easy-RSA no puede hacer init-pki sobre un volumen montado por Docker
+    TMP_PKI="/tmp/easyrsa-pki"
+    mkdir -p "$TMP_PKI"
+
     cd /usr/share/easy-rsa
-    export EASYRSA_PKI="$PKI_DIR"
+    export EASYRSA_PKI="$TMP_PKI"
     export EASYRSA_BATCH=1                  # Sin preguntas interactivas
     export EASYRSA_REQ_CN="OpenVPN-CA"
     export EASYRSA_ALGO="ec"               # ECDSA — más rápido que RSA
@@ -32,7 +35,11 @@ if [ ! -f "$PKI_DIR/ca.crt" ]; then
     $EASYRSA build-server-full server nopass
     $EASYRSA gen-dh                        # Diffie-Hellman params
 
-    # TLS-Auth key (capa HMAC extra)
+    # Copiar todo al volumen persistente
+    cp -r "$TMP_PKI"/. "$PKI_DIR/"
+    rm -rf "$TMP_PKI"
+
+    # TLS-Auth key (capa HMAC extra) — directamente en el volumen
     openvpn --genkey secret "$PKI_DIR/ta.key"
 
     echo ">>> PKI generada correctamente en $PKI_DIR"
