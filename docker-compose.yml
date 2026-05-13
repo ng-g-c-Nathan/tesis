@@ -13,11 +13,11 @@ services:
   # -----------------------------------------------------------------
   repos:
     build:
-      context: .                        # Usa el Dockerfile og
+      context: .                        # Usa el Dockerfile original de Alpine
       dockerfile: Dockerfile.repos      # El que ya tienes con los git clone
     volumes:
       - tesis-repos:/tesis              # Los repos quedan persistidos en este volumen
-    restart: "no"                       # No reiniciar
+    restart: "no"                       # No reiniciar — solo corre una vez
 
   # -----------------------------------------------------------------
   # spring-vpn: Servidor OpenVPN + Spring Boot API
@@ -28,6 +28,9 @@ services:
       dockerfile: Dockerfile.spring-vpn
     container_name: spring-vpn
     restart: unless-stopped
+
+    # privileged: necesario para sysctl, tun0 e iptables dentro del contenedor
+    privileged: true
 
     # Permisos necesarios para OpenVPN (crear tun0, iptables, etc.)
     cap_add:
@@ -45,6 +48,7 @@ services:
       - openvpn-pki:/etc/openvpn/pki
       # Logs de tráfico VPN (lo lee tu Python de anomaly scoring)
       - openvpn-logs:/var/openvpn/daily
+      # Opcional: monta tu server.conf personalizado desde el host
       # Descomenta la línea siguiente para sobreescribir el conf por defecto:
       # - ./config/server.conf:/etc/openvpn/server.conf:ro
 
@@ -71,6 +75,6 @@ volumes:
   tesis-repos:
     driver: local
   openvpn-pki:
-    driver: local                       # Certificados NO borrar
+    driver: local                       # Certificados — NO borrar en producción
   openvpn-logs:
     driver: local

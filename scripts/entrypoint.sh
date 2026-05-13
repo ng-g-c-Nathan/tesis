@@ -17,7 +17,7 @@ EASYRSA="/usr/share/easy-rsa/easyrsa"
 if [ ! -f "$PKI_DIR/ca.crt" ]; then
     echo ">>> PKI no encontrada — generando certificados automáticamente..."
 
-    # Easy-RSA no puede hacer init-pki sobre un volumen montado por Docker
+    # Easy-RSA no puede hacer init-pki sobre un volumen montado por Docker.
     TMP_PKI="/tmp/easyrsa-pki"
     mkdir -p "$TMP_PKI"
 
@@ -51,7 +51,7 @@ fi
 # PASO 2: IP Forwarding + NAT (necesario para rutear tráfico VPN)
 # -------------------------------------------------------------------
 echo ">>> Habilitando IP forwarding..."
-echo 1 > /proc/sys/net/ipv4/ip_forward
+sysctl -w net.ipv4.ip_forward=1 || echo "WARN: ip_forward ya activo via compose"
 
 # Detectar la interfaz de salida automáticamente
 IFACE=$(ip route | grep '^default' | awk '{print $5}' | head -1)
