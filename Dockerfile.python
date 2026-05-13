@@ -1,13 +1,5 @@
-# ===================================================================
-# Dockerfile.python — Generador de tráfico + pipeline ML
-# Base: Python 3.11 slim
-# Servicios que corre:
-#   - default_generator.py  (captura de red → CSV cada 10 min)
-#   - Controller.py / score_csv.py  (scoring bajo demanda desde Spring)
-# ===================================================================
 FROM python:3.11-slim
 
-# --- Dependencias del sistema ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpcap-dev \
     tcpdump \
@@ -17,22 +9,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN git clone https://github.com/ng-g-c-Nathan/network-anomaly-scoring /app
 
-# --- Directorio de trabajo ---
 WORKDIR /app
 
-# --- Dependencias Python ---
 RUN pip install --no-cache-dir \
     scapy \
     pandas \
     numpy \
     scikit-learn \
-    joblib
+    joblib \
+    flask
 
-# --- Carpetas de salida (volúmenes compartidos) ---
 RUN mkdir -p /app/daily /app/models
 
-# --- Script de arranque ---
 COPY scripts/entrypoint-python.sh /entrypoint-python.sh
+COPY flask_api.py /app/flask_api.py
 RUN chmod +x /entrypoint-python.sh
+
+EXPOSE 5000
 
 ENTRYPOINT ["/entrypoint-python.sh"]

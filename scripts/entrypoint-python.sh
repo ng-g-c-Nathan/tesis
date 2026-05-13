@@ -1,16 +1,18 @@
 #!/bin/bash
 # ===================================================================
 # entrypoint-python.sh
-# Arranca default_generator.py en modo loop (captura cada 10 min).
-# Los CSVs se escriben en /app/daily, que es un volumen compartido
-# con el servicio spring-vpn para que el scoring los pueda leer.
+# 1) Arranca Flask API en background (puerto 5000)
+# 2) Arranca default_generator.py en loop (captura cada 10 min)
 # ===================================================================
 set -e
 
 cd /app
 
-echo ">>> Esperando 10s para que la red del contenedor esté lista..."
+echo ">>> Esperando 10s para que la red esté lista..."
 sleep 10
+
+echo ">>> Iniciando Flask API en puerto 5000..."
+python flask_api.py &
 
 echo ">>> Iniciando captura de tráfico en loop (cada 10 minutos)..."
 exec python default_generator.py \

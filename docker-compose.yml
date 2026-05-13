@@ -1,17 +1,9 @@
 # ===================================================================
 # docker-compose.yml — Orquestador principal del proyecto Tesis
-# Servicios:
-#   - repos         : clona todos los repositorios (Alpine + git)
-#   - spring-vpn    : servidor OpenVPN + API Spring Boot
-#   - python-scorer : captura tráfico cada 10 min + pipeline ML
 # ===================================================================
 
 services:
 
-  # -----------------------------------------------------------------
-  # repos: Contenedor efímero que clona los repositorios
-  # Solo corre una vez y termina (no es un servicio persistente)
-  # -----------------------------------------------------------------
   repos:
     build:
       context: .
@@ -20,9 +12,6 @@ services:
       - tesis-repos:/tesis
     restart: "no"
 
-  # -----------------------------------------------------------------
-  # spring-vpn: Servidor OpenVPN + Spring Boot API
-  # -----------------------------------------------------------------
   spring-vpn:
     build:
       context: .
@@ -41,13 +30,15 @@ services:
     volumes:
       - openvpn-pki:/etc/openvpn/pki
       - openvpn-logs:/var/openvpn/daily
-      # Volumen compartido: Spring puede leer los CSVs que genera Python
       - traffic-daily:/app/daily
     environment:
       - TRAFFIC_DIR=/app/daily
+      - PYTHON_API_URL=http://python-scorer:5000   # Spring llama Flask aquí
       - SPRING_PROFILES_ACTIVE=prod
     sysctls:
       - net.ipv4.ip_forward=1
+    depends_on:
+      - python-scorer
     healthcheck:
       test: ["CMD", "sh", "-c", "cat /etc/openvpn/openvpn.pid | xargs -I{} test -d /proc/{}"]
       interval: 30s
@@ -55,9 +46,6 @@ services:
       retries: 3
       start_period: 15s
 
-  # -----------------------------------------------------------------
-  # angular: Frontend Angular servido con nginx
-  # -----------------------------------------------------------------
   angular:
     build:
       context: .
@@ -69,57 +57,32 @@ services:
     depends_on:
       - spring-vpn
 
-  # -----------------------------------------------------------------
-  # python-scorer: Captura tráfico de red en vivo y lo convierte
-  # a CSV cada 10 minutos. También expone el pipeline ML para scoring
-  # bajo demanda desde Spring Boot.
-  #
-  # Requiere network_mode: host para que Scapy pueda ver el tráfico
-  # real del servidor (incluido el tun0 de OpenVPN).
-  # -----------------------------------------------------------------
   python-scorer:
     build:
       context: .
       dockerfile: Dockerfile.python
     container_name: python-scorer
     restart: unless-stopped
-
-    # network_mode: host es necesario para que Scapy capture el
-    # tráfico de la interfaz real del host (eth0, tun0, etc.).
-    # Sin esto, solo ve tráfico interno del bridge de Docker.
-    network_mode: host
-
-    # Permisos para captura de paquetes en vivo
+    network_mode: host        # Scapy necesita ver el tráfico real del host
     cap_add:
       - NET_ADMIN
-      - NET_RAW        # Necesario para Scapy / raw sockets
-
+      - NET_RAW
+    ports:
+      - "5000:5000"           # Flask API accesible por Spring
     volumes:
-      # CSVs generados — compartidos con spring-vpn para scoring
       - traffic-daily:/app/daily
-      # Modelos entrenados — persistidos entre reinicios
       - ml-models:/app/models
-
     environment:
-      # Interfaz a escuchar (vacío = auto-detect, que es lo que hace get_local_ip())
-      - CAPTURE_IFACE=
-      # Directorio donde se guardan los CSVs
       - DAILY_DIR=/app/daily
 
-    depends_on:
-      - spring-vpn
-
-# -----------------------------------------------------------------
-# Volúmenes persistentes
-# -----------------------------------------------------------------
 volumes:
   tesis-repos:
     driver: local
   openvpn-pki:
-    driver: local                   # Certificados
+    driver: local
   openvpn-logs:
     driver: local
   traffic-daily:
-    driver: local                   # CSVs de tráfico — compartido entre servicios
+    driver: local
   ml-models:
-    driver: local                   # Modelos entrenados — persistidos
+    driver: local
