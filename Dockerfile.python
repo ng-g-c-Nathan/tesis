@@ -8,9 +8,6 @@
 FROM python:3.11-slim
 
 # --- Dependencias del sistema ---
-# libpcap-dev : necesaria para que Scapy capture paquetes en vivo
-# tcpdump     : útil para debug de capturas
-# iproute2    : para que get_local_ip() detecte la interfaz correctamente
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpcap-dev \
     tcpdump \
@@ -18,11 +15,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN git clone https://github.com/ng-g-c-Nathan/network-anomaly-scoring /app
+
 # --- Directorio de trabajo ---
 WORKDIR /app
-
-# --- Clonar el repo Python ---
-RUN git clone https://github.com/ng-g-c-Nathan/network-anomaly-scoring /app
 
 # --- Dependencias Python ---
 RUN pip install --no-cache-dir \
@@ -32,7 +28,7 @@ RUN pip install --no-cache-dir \
     scikit-learn \
     joblib
 
-# --- Carpeta de salida de CSVs (se monta como volumen compartido) ---
+# --- Carpetas de salida (volúmenes compartidos) ---
 RUN mkdir -p /app/daily /app/models
 
 # --- Script de arranque ---
