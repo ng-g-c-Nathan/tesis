@@ -33,7 +33,9 @@ services:
       - traffic-daily:/app/daily
     environment:
       - TRAFFIC_DIR=/app/daily
-      - PYTHON_API_URL=http://python-scorer:5000   # Spring llama Flask aquí
+      # 172.17.0.1 = IP del host desde dentro de Docker (gateway por defecto)
+      # python-scorer usa network_mode: host, por eso no es alcanzable por nombre
+      - PYTHON_API_URL=http://172.17.0.1:5000
       - SPRING_PROFILES_ACTIVE=prod
     sysctls:
       - net.ipv4.ip_forward=1
@@ -63,12 +65,12 @@ services:
       dockerfile: Dockerfile.python
     container_name: python-scorer
     restart: unless-stopped
-    network_mode: host        # Scapy necesita ver el tráfico real del host
+    # network_mode: host — Scapy ve todo el tráfico real del host (eth0, tun0, etc.)
+    # Spring lo alcanza via 172.17.0.1:5000 en lugar de por nombre de contenedor
+    network_mode: host
     cap_add:
       - NET_ADMIN
       - NET_RAW
-    ports:
-      - "5000:5000"           # Flask API accesible por Spring
     volumes:
       - traffic-daily:/app/daily
       - ml-models:/app/models
